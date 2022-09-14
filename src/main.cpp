@@ -20,7 +20,15 @@ std::unique_ptr<VertexPositionGeometry> geometry;
 // Polyscope visualization handle, to quickly add data to the surface
 polyscope::SurfaceMesh* psMesh;
 
-float TCOEF = 1.0;
+// A bunch of random edges are selected upon program startup; unit vectors placed at the midpoints of these edges are
+// used as the source for the diffuseVectors() function. The user can control the direction for all the edges
+// simulataneously.
+std::vector<Edge> SELECTED_EDGES;
+int nEDGES_SELECTED = 5;
+Vector2 INIT_DIR;
+float INIT_ANGLE = PI;
+double MEAN_EDGE_LENGTH = 0.;
+
 
 /*
  * Convert edge midpoint scalar data to vertex data by averaging.
@@ -85,6 +93,27 @@ void solvePoissonProblem() {
   geometry->unrequireCrouzeixRaviartMassMatrix();
 }
 
+void displaySourceVectors() {
+
+  // Display the origin points
+  std::vector<std::array<size_t, 2>> edgeInds;
+  std::vector<Vector3> positions;
+  for (Edge e : SELECTED_EDGES) {
+    Vector3 a = geometry->vertexPositions[e.firstVertex()];
+    Vector3 b = geometry->vertexPositions[e.secondVertex()];
+    Vector3 midpoint = 0.5 * (a + b);
+    positions.push_back(midpoint);
+  }
+  auto points = psMesh->addSurfaceGraphQuantity("vector origins", positions, edgeInds);
+  points->setColor({0.0, 1.0, 0.0});
+  points->setEnabled(true);
+
+  // Display the direction by drawing a segment in the direction
+  std::vector<std::array<size_t, 2>> edgeInds_vectors;
+  std::vector<Vector3> positions_vectors;
+  // TODO
+}
+
 /*
  * Diffuse vectors using the Crouzeix-Raviart connection Laplacian.
  */
@@ -95,6 +124,9 @@ void diffuseVectors() {
   SparseMatrix<std::complex<double>> L = geometry->crouzeixRaviartConnectionLaplacian;
 
   // TODO: Pick a curve and place vectors along it
+
+  // Display initial vectors and solution.
+  displaySourceVectors();
 
   geometry->unrequireCrouzeixRaviartConnectionLaplacian();
 }
@@ -150,7 +182,23 @@ int main(int argc, char** argv) {
                                           geometry->inputVertexPositions, mesh->getFaceVertexList(),
                                           polyscopePermutations(*mesh));
 
-  // TODO: Set up solver
+  // Compute the mean edge length of the mesh.
+  MEAN_EDGE_LENGTH = 0.;
+  geometry->requireEdgeLengths();
+  for (Edge e : mesh->edges()) {
+    MEAN_EDGE_LENGTH += geometry->edgeLengths[e];
+  }
+  MEAN_EDGE_LENGTH /= mesh->nEdges();
+  geometry->unrequireEdgeLengths();
+
+  // Pick a bunch of random edges.
+  for (size_t i = 0; i < nEDGES_SELECTED; i++) {
+    size_t E = mesh->nEdges();
+    std::random_device dev;
+    std::mt19937 rng(dev());
+    std::uniform_int_distribution<std::mt19937::result_type> distr(0, E - 1);
+    SELECTED_EDGES.push_back(mesh->edge(distr(rng)));
+  }
 
   // Give control to the polyscope gui
   polyscope::show();
