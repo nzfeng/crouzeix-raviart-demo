@@ -77,7 +77,6 @@ add_subdirectory(deps/polyscope)
 # == Build our project stuff
 
 set(SRCS 
-  src/utils.cpp
   src/main.cpp
 )
 
