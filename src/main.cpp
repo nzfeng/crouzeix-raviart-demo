@@ -230,8 +230,9 @@ void doParallelTransport() {
     indicatorRHS[eIdx] = 1;
   }
 
-  // Just use square solver, which should work in all cases (even if matrix fails to be SPD)
-  Vector<std::complex<double>> sol = solveSquare(LHS, rhs_vec);
+  // The C-R connection Laplacian should always be PSD, since z^T L z takes the inner product of two PL vector fields
+  // within a face, and inner products are PSD
+  Vector<std::complex<double>> sol = solvePositiveDefinite(LHS, rhs_vec);
 
   // Get the right magnitudes.
   Vector<double> dataSol = scalarHeatSolver.solve(dataRHS);
